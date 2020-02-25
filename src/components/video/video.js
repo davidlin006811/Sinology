@@ -313,6 +313,11 @@ class Video extends PureComponent {
         this.updateProgressBar(e.changedTouches[0].pageX, true);
       }
       this.disableMouseDrag();
+      if (!this.state.isPlaying) {
+        this.setState({
+          isPlaying: true
+        });
+      }
     });
   }
   componentWillUnmount() {

@@ -6,10 +6,7 @@ module.exports = {
       {
         test: /\.js$/,
         loader: "babel-loader",
-        exclude: /node_modules/,
-        options: {
-          presets: ["@babel/preset-env"]
-        }
+        exclude: /node_modules/
       },
       {
         test: /\.css$/,
@@ -31,7 +28,7 @@ module.exports = {
   },
   plugins: [
     new HtmlWebpackPlugin({
-      template: "template.html"
+      template: "index.html"
     }),
     new MiniCssExtractPlugin({
       filename: "style.css"
