@@ -21,13 +21,16 @@ class Video extends PureComponent {
       isPlaying: false,
       fullScreen: false,
       current: 0,
-      firstTime: true
+      firstTime: true,
+      needShowMenu: false
     };
     this.mounted = true;
     this.lastTime = -1;
     this.tryTimes = 0;
     this.timer = null;
     this.hideMenuTimeout = null;
+    this.hiddenBtnTimeout = null;
+    this.showMenuTimeout = null;
     this.isVideoBreak = null;
     this.orientationTimer = null;
     this.delayTimeToCheck = null;
@@ -50,31 +53,12 @@ class Video extends PureComponent {
     return window.orientation === 90 || window.orientation === -90;
   };
   showMenu = () => {
-    // this.turnOnVolume();
-    if (this.vid.get(0).paused) {
-      this.vid.get(0).play();
-      this.setState({
-        isPlaying: true,
-        videoEnd: false
-      });
-    } else {
-      this.vid.get(0).pause();
-      this.setState({
-        isPlaying: false
-      });
+    this.menuFadeIn();
+    if (this.state.isPlaying) {
+      clearTimeout(this.showMenuTimeout);
+      this.showMenuTimeout = setTimeout(this.menuFadeOut, 3000);
+      // this.menuFadeOut();
     }
-
-    let menuBar = $("#videoNav-" + this.props.video.video_num);
-    let controllBar = $("#videoContorl-" + this.props.video.video_num);
-
-    menuBar.fadeIn();
-    controllBar.fadeIn();
-    let delayTime = this.isLandscape() ? 60000 : 10000;
-    clearTimeout(this.hideMenuTimeout);
-    this.hideMenuTimeout = setTimeout(() => {
-      menuBar.fadeOut();
-      controllBar.fadeOut();
-    }, delayTime);
   };
 
   //设置时长
@@ -138,6 +122,31 @@ class Video extends PureComponent {
     menuBar.fadeOut();
     controllBar.fadeOut();
   };
+  menuFadeOut = () => {
+    let menuBar = $("#videoNav-" + this.props.video.video_num);
+    let controllBar = $("#videoContorl-" + this.props.video.video_num);
+    let playBtn = $("#playBtn-" + this.props.video.video_num);
+    clearTimeout(this.hideMenuTimeout);
+    clearTimeout(this.hiddenBtnTimeout);
+    this.hideMenuTimeout = setTimeout(() => {
+      menuBar.fadeOut();
+      controllBar.fadeOut();
+    }, 6000);
+    this.hiddenBtnTimeout = setTimeout(() => {
+      playBtn.fadeOut();
+    }, 3000);
+  };
+  menuFadeIn = () => {
+    let menuBar = $("#videoNav-" + this.props.video.video_num);
+    let controllBar = $("#videoContorl-" + this.props.video.video_num);
+    let playBtn = $("#playBtn-" + this.props.video.video_num);
+    clearTimeout(this.hideMenuTimeout);
+    clearTimeout(this.hiddenBtnTimeout);
+    clearTimeout(this.showMenuTimeout);
+    menuBar.fadeIn();
+    controllBar.fadeIn();
+    playBtn.fadeIn();
+  };
   //播放切换
   accessPlay = () => {
     if (!this.vid.get(0).paused && !this.state.videoEnd) {
@@ -145,12 +154,14 @@ class Video extends PureComponent {
       this.setState({
         isPlaying: false
       });
+      this.menuFadeIn();
     } else if (this.vid.get(0).paused && !this.state.videoEnd) {
       this.vid.get(0).play();
       this.setState({
         isPlaying: true,
         beginPlaying: true
       });
+      this.menuFadeOut();
     } else if (this.vid.get(0).paused && this.state.videoEnd) {
       if (this.OS === "iOS") {
         this.playiOSVideo();
@@ -166,6 +177,7 @@ class Video extends PureComponent {
           isPlaying: true
         });
       }
+      this.menuFadeOut();
     }
     this.setState({
       videoEnd: false
@@ -196,8 +208,11 @@ class Video extends PureComponent {
   videoEnd = () => {
     if (this.mounted) {
       this.setState({
+        isPlaying: false,
         videoEnd: true
       });
+      let playBtn = $("#playBtn-" + this.props.video.video_num);
+      playBtn.fadeIn();
     }
   };
   //更新进度条
@@ -246,6 +261,17 @@ class Video extends PureComponent {
       timeDrag: false
     });
   };
+  checkVideoStatus = () => {
+    let isPlaying = this.vid.get(0).paused ? false : true;
+    this.setState({
+      isPlaying: isPlaying
+    });
+    if (isPlaying) {
+      this.menuFadeOut();
+    } else {
+      this.menuFadeIn();
+    }
+  };
 
   componentDidMount() {
     this.vid = $("#" + this.props.video.video_num);
@@ -291,6 +317,13 @@ class Video extends PureComponent {
         this.vid.get(0).play();
       }
     });
+    this.vid.on("fullscreenchange", this.checkVideoStatus);
+    this.vid.on("mozfullscreenchange", this.checkVideoStatus);
+    this.vid.on("webkitfullscreenchange", this.checkVideoStatus);
+    this.vid.on("msfullscreenchange", this.checkVideoStatus);
+
+    let playBtn = $("#playBtn-" + this.props.video.video_num);
+    playBtn.fadeIn();
   }
 
   componentDidUpdate() {
@@ -318,11 +351,15 @@ class Video extends PureComponent {
           isPlaying: true
         });
       }
+      this.menuFadeOut();
     });
   }
   componentWillUnmount() {
     this.mounted = false;
     clearTimeout(this.showMenuTimer);
+    clearTimeout(this.hideMenuTimeout);
+    clearTimeout(this.hiddenBtnTimeout);
+    clearTimeout(this.hideMenuTimeout);
   }
   render() {
     //console.log(this.state);
@@ -338,7 +375,7 @@ class Video extends PureComponent {
         id={this.props.video.video_num}
         type="video/mp4"
         preload="metadata"
-        onMouseOver={this.showMenu}
+        onClick={this.showMenu}
         poster={this.props.video.cover}
         webkit-playsinline="true"
         playsInline={true}
@@ -350,21 +387,24 @@ class Video extends PureComponent {
         <p>抱歉，您的瀏覽器無法支持HTML5的視頻播放</p>
       </video>
     );
-    if (
-      (!this.state.isPlaying && this.state.videoReady) ||
-      this.state.videoEnd
-    ) {
-      let btn = this.state.videoEnd ? (
-        <i className="fa fa-refresh fa-3x"></i>
-      ) : (
-        <i className="fa fa-play-circle fa-3x"></i>
-      );
-      playButton = (
-        <div className="large-play-pause-btn" onClick={this.accessPlay}>
-          <div className="play-pause-btn-wrapup">{btn}</div>
-        </div>
-      );
+
+    let btnClass;
+    if (this.state.videoEnd) {
+      btnClass = "fa fa-refresh fa-2x";
+    } else if (this.state.isPlaying) {
+      btnClass = "fa fa-pause fa-2x";
+    } else if (!this.state.isPlaying) {
+      btnClass = "fa fa-play fa-3x";
     }
+
+    let btnId = "playBtn-" + this.props.video.video_num;
+    playButton = (
+      <div className="large-play-pause-btn hide" id={btnId}>
+        <div className="play-pause-btn-wrapup">
+          <i className={btnClass} onClick={this.accessPlay}></i>
+        </div>
+      </div>
+    );
 
     //设置控制栏控件状态
     if (this.state.videoDomReady && currentPlayVideo !== null) {
@@ -391,7 +431,7 @@ class Video extends PureComponent {
 
       //设置当前播放时间和总时长
       if (this.state.duration !== 0) {
-        let totalWidth = window.innerWidth * 0.7;
+        let totalWidth = window.innerWidth * 0.8;
         let progress = (this.state.current / this.state.duration) * totalWidth;
         $("#videoProgress-" + this.props.video.video_num).width(progress);
       }
@@ -470,10 +510,6 @@ class Video extends PureComponent {
             marginLeft: controlBarXPosition
           }}
         >
-          <div className="video-play-pause-btn" onClick={this.accessPlay}>
-            <img src={playIcon} alt="play-icon" />
-          </div>
-
           <div className="video-progress-bar">
             <div className="progress-bar">
               <div id={videoProgressId} className="progress-color">

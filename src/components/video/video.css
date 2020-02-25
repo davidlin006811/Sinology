@@ -124,11 +124,12 @@ video {
   display: inline-block;
 }
 .video-progress-bar {
-  width: 70%;
+  width: 80%;
   height: 100%;
   text-align: center;
   background-color: transparent;
   padding-top: 10px;
+  margin-left: 5%;
   float: left;
 }
 .progress-bar {
@@ -216,7 +217,6 @@ video {
   bottom: 0%;
   margin: auto;
   text-align: center;
-  background-color: rgba(230, 230, 230, 0.4);
 }
 .play-pause-btn-wrapup {
   width: 100%;
@@ -224,7 +224,8 @@ video {
   display: table;
 }
 .large-play-pause-btn i {
-  color: #e72923;
+  color: white;
+
   display: table-cell;
   vertical-align: middle;
   background-color: transparent;
