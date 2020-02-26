@@ -251,7 +251,7 @@ class Video extends PureComponent {
     if (position > progressBarWidth) {
       position = progressBarWidth;
     }
-    let percentage = (100 * position) / progressBarWidth;
+    let percentage = 100 * position / progressBarWidth;
 
     if (percentage > 100) {
       percentage = 100;
@@ -260,7 +260,7 @@ class Video extends PureComponent {
       percentage = 0;
     }
     videoProges.width(parseInt(position, 10));
-    let current = parseInt((percentage * duration) / 100, 10);
+    let current = parseInt(percentage * duration / 100, 10);
     let currentTime = this.numberToTime(current);
     if (this.mounted) {
       this.setState({
@@ -314,6 +314,7 @@ class Video extends PureComponent {
 
     //如果视频加载完成，移除等待画面
     this.vid.on("canplay", () => {
+      console.log("video can play");
       if (this.state.lastPlayPosition > 0) {
         video.get(0).currentTime = this.state.lastPlayPosition;
       }
@@ -328,6 +329,12 @@ class Video extends PureComponent {
     //监听loadmetadata完成事件，如果完成，设置视频时长
     this.vid.on("loadedmetadata", () => {
       this.setDuration();
+      if (this.OS === "iOS" && this.mounted) {
+        this.setState({
+          videoReady: true,
+          lastPlayPosition: 0
+        });
+      }
     });
 
     //监听播放进度事件，更新播放进度
@@ -448,7 +455,7 @@ class Video extends PureComponent {
     playButton = (
       <div className="large-play-pause-btn hide" id={btnId}>
         <div className="play-pause-btn-wrapup">
-          <i className={btnClass} onClick={this.accessPlay}></i>
+          <i className={btnClass} onClick={this.accessPlay} />
         </div>
       </div>
     );
@@ -469,7 +476,7 @@ class Video extends PureComponent {
       //设置当前播放时间和总时长
       if (this.state.duration !== 0) {
         let totalWidth = window.innerWidth * 0.8;
-        let progress = (this.state.current / this.state.duration) * totalWidth;
+        let progress = this.state.current / this.state.duration * totalWidth;
         $("#videoProgress-" + this.props.video.video_num).width(progress);
       }
       //设置菜单栏和控制栏的位置
@@ -480,7 +487,7 @@ class Video extends PureComponent {
       menuBarXPosition = 0;
       controlBarXPosition = 0;
 
-      let videoBottom = (window.innerWidth * 9) / 16;
+      let videoBottom = window.innerWidth * 9 / 16;
 
       controlBarYPosition = videoBottom - 50;
 
@@ -500,7 +507,9 @@ class Video extends PureComponent {
             marginLeft: menuBarXPosition
           }}
         >
-          <span style={{ width: barWidth }}> {this.props.video.title}</span>
+          <span style={{ width: barWidth }}>
+            {" "}{this.props.video.title}
+          </span>
         </div>
       );
       if (!this.state.videoReady) {
@@ -512,7 +521,7 @@ class Video extends PureComponent {
         if (this.state.isLandScape) {
           loadingHeight = "100vh";
         } else {
-          loadingHeight = (window.innerWidth * 9) / 16;
+          loadingHeight = window.innerWidth * 9 / 16;
         }
         let loadingWidth = Window.innerWidth;
         let marginTop = 0;
@@ -560,8 +569,12 @@ class Video extends PureComponent {
               </div>
             </div>
             <div className="display-current-video-time">
-              <div className="video-start-time">{this.state.currentTime}</div>
-              <div className="video-end-time">{this.state.endTime}</div>
+              <div className="video-start-time">
+                {this.state.currentTime}
+              </div>
+              <div className="video-end-time">
+                {this.state.endTime}
+              </div>
             </div>
           </div>
           <div className="video-screen-control-btn" onClick={this.switchScreen}>
