@@ -5,13 +5,11 @@ import "./video.css";
 import playProgressImg from "./image/play_progress.svg";
 import loadingImg from "./image/loading.gif";
 import fullScreenImg from "./image/full_screen.svg";
-import playImg from "./image/play.svg";
-import pauseImg from "./image/pause.svg";
-import refreshImg from "./image/refresh.png";
 
 class Video extends PureComponent {
   constructor(props) {
     super(props);
+    //console.log(props);
     this.OS = getMobileOperatingSystem();
     // this.isWeChatBrowser = isWechat();
 
@@ -37,6 +35,7 @@ class Video extends PureComponent {
     this.delayTimeToPlay = null;
     this.vid = null;
     this.dragEvent = null;
+    this.videoChange = false;
   }
 
   numberToTime = number => {
@@ -140,31 +139,50 @@ class Video extends PureComponent {
     let menuBar = $("#videoNav-" + this.props.video.video_num);
     let controllBar = $("#videoContorl-" + this.props.video.video_num);
     let playBtn = $("#playBtn-" + this.props.video.video_num);
-    clearTimeout(this.hideMenuTimeout);
+
     clearTimeout(this.hiddenBtnTimeout);
+    clearTimeout(this.hideMenuTimeout);
     clearTimeout(this.showMenuTimeout);
-    menuBar.fadeIn();
-    controllBar.fadeIn();
     playBtn.fadeIn();
+    if (!this.videoChange & !this.state.videoEnd) {
+      menuBar.fadeIn();
+      controllBar.fadeIn();
+    } else {
+      menuBar.fadeOut();
+      controllBar.fadeOut();
+    }
+    this.videoChange = false;
+  };
+  pauseVideo = () => {
+    this.vid.get(0).pause();
+    this.setState({
+      isPlaying: false
+    });
+    this.menuFadeIn();
+    if (this.props.playId === this.props.video.id) {
+      this.props.resumeVideoPlayId();
+    }
   };
   //播放切换
   accessPlay = () => {
     if (!this.vid.get(0).paused && !this.state.videoEnd) {
-      this.vid.get(0).pause();
-      this.setState({
-        isPlaying: false
-      });
-      this.menuFadeIn();
+      this.pauseVideo();
     } else if (this.vid.get(0).paused && !this.state.videoEnd) {
       this.vid.get(0).play();
       this.setState({
         isPlaying: true,
         beginPlaying: true
       });
+      if (this.props.playId !== this.props.video.id) {
+        this.setVideoPlayIdToMe();
+      }
       this.menuFadeOut();
     } else if (this.vid.get(0).paused && this.state.videoEnd) {
       if (this.OS === "iOS") {
         this.playiOSVideo();
+        if (this.props.playId !== this.props.video.id) {
+          this.props.setVideoPlayIdToMe();
+        }
       } else {
         this.vid.get(0).pause();
         let source = document.getElementById(
@@ -176,6 +194,9 @@ class Video extends PureComponent {
         this.setState({
           isPlaying: true
         });
+        if (this.props.playId !== this.props.video.id) {
+          this.setVideoPlayIdToMe();
+        }
       }
       this.menuFadeOut();
     }
@@ -189,17 +210,17 @@ class Video extends PureComponent {
     if (this.OS !== "iOS" || this.state.beginPlaying) {
       return;
     }
-    if (!isWechat()) {
-      this.vid.get(0).play();
-    } else {
-      this.vid.get(0).pause();
-      let source = document.getElementById(
-        "videoSource" + this.props.video.video_num
-      );
-      source.setAttribute("src", this.props.video_url);
-      this.vid.get(0).load();
-      this.vid.get(0).play();
-    }
+    // if (!isWechat()) {
+    // this.vid.get(0).play();
+    //} else {
+    this.vid.get(0).pause();
+    let source = document.getElementById(
+      "videoSource" + this.props.video.video_num
+    );
+    source.setAttribute("src", this.props.video_url);
+    this.vid.get(0).load();
+    this.vid.get(0).play();
+    //}
     this.setState({
       beginPlaying: true
     });
@@ -212,6 +233,7 @@ class Video extends PureComponent {
         videoEnd: true
       });
       let playBtn = $("#playBtn-" + this.props.video.video_num);
+      clearTimeout(this.hiddenBtnTimeout);
       playBtn.fadeIn();
     }
   };
@@ -220,7 +242,8 @@ class Video extends PureComponent {
     if (!this.mounted) {
       return;
     }
-    let progressBar = $(".progress-bar");
+    //let progressBar = $(".progress-bar");
+    let progressBar = $("#timeline-" + this.props.video.video_num);
     let videoProges = $("#videoProgress" + this.props.video.video_num);
     let progressBarWidth = progressBar.width();
     let duration = this.state.duration;
@@ -229,6 +252,7 @@ class Video extends PureComponent {
       position = progressBarWidth;
     }
     let percentage = (100 * position) / progressBarWidth;
+
     if (percentage > 100) {
       percentage = 100;
     }
@@ -263,14 +287,20 @@ class Video extends PureComponent {
   };
   checkVideoStatus = () => {
     let isPlaying = this.vid.get(0).paused ? false : true;
+
+    let videoEnd = this.state.current >= this.state.duration ? true : false;
     this.setState({
-      isPlaying: isPlaying
+      isPlaying: isPlaying,
+      videoEnd: videoEnd
     });
     if (isPlaying) {
       this.menuFadeOut();
     } else {
       this.menuFadeIn();
     }
+  };
+  setVideoPlayIdToMe = () => {
+    this.props.setVideoPlayId(this.props.video.id);
   };
 
   componentDidMount() {
@@ -325,6 +355,22 @@ class Video extends PureComponent {
     let playBtn = $("#playBtn-" + this.props.video.video_num);
     playBtn.fadeIn();
   }
+  componentWillReceiveProps(nextProps) {
+    if (
+      this.props.playId !== nextProps.playId &&
+      nextProps.playId !== this.props.video.id &&
+      nextProps.playId !== -1
+    ) {
+      this.videoChange = true;
+      //if (this.state.isPlaying) {
+      this.pauseVideo();
+      //}
+      /*let menuBar = $("#videoNav-" + this.props.video.video_num);
+      let controllBar = $("#videoContorl-" + this.props.video.video_num);
+      menuBar.fadeOut();
+      controllBar.fadeOut();*/
+    }
+  }
 
   componentDidUpdate() {
     let timeDrag = this.state.timeDrag;
@@ -367,8 +413,9 @@ class Video extends PureComponent {
     let menuBar, controlBar, loading;
 
     //设置video
-    let srcURL =
-      this.OS === "iOS" && isWechat() ? "" : this.props.video.video_url;
+    //let srcURL =
+    //this.OS === "iOS" && isWechat() ? "" : this.props.video.video_url;
+    let srcURL = this.props.video.video_url;
     let sourceId = "videoSource-" + this.props.video.video_num;
     currentPlayVideo = (
       <video
@@ -408,23 +455,13 @@ class Video extends PureComponent {
 
     //设置控制栏控件状态
     if (this.state.videoDomReady && currentPlayVideo !== null) {
-      let playIcon,
-        screenIcon,
+      let screenIcon,
         barWidth,
         menuBarXPosition,
         menuBarYPosition,
         controlBarXPosition,
         controlBarYPosition;
 
-      //设置播放/暂停状态
-
-      if (this.state.isPlaying) {
-        playIcon = pauseImg;
-      } else if (!this.state.isPlaying && !this.state.videoEnd) {
-        playIcon = playImg;
-      } else if (!this.state.isPlaying && this.state.videoEnd) {
-        playIcon = refreshImg;
-      }
       //设置全屏/正常屏幕图标
 
       screenIcon = fullScreenImg;
@@ -500,7 +537,7 @@ class Video extends PureComponent {
       let controlBarId = "videoContorl-" + this.props.video.video_num;
       let videoProgressId = "videoProgress-" + this.props.video.video_num;
       let progreeBtnId = "progress-button-" + this.props.video.video_num;
-
+      let totalTimeLineId = "timeline-" + this.props.video.video_num;
       controlBar = (
         <div
           id={controlBarId}
@@ -510,7 +547,7 @@ class Video extends PureComponent {
             marginLeft: controlBarXPosition
           }}
         >
-          <div className="video-progress-bar">
+          <div className="video-progress-bar" id={totalTimeLineId}>
             <div className="progress-bar">
               <div id={videoProgressId} className="progress-color">
                 <span id={progreeBtnId}>
