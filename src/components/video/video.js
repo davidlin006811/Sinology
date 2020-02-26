@@ -17,10 +17,8 @@ class Video extends PureComponent {
       isLandScape: false,
       videoEnd: false,
       isPlaying: false,
-      fullScreen: false,
       current: 0,
-      firstTime: true,
-      needShowMenu: false
+      firstTime: true
     };
     this.mounted = true;
     this.lastTime = -1;
@@ -102,20 +100,23 @@ class Video extends PureComponent {
     if (this.isLandscape()) {
       return;
     }
-
-    //if (!this.state.fullScreen) {
-    if (this.vid.get(0).requestFullscreen) {
-      this.vid.get(0).requestFullscreen();
-    } else if (this.vid.get(0).mozRequestFullScreen) {
-      /* Firefox */
-      this.vid.get(0).mozRequestFullScreen();
-    } else if (this.vid.get(0).webkitRequestFullscreen) {
-      /* Chrome, Safari and Opera */
-      this.vid.get(0).webkitRequestFullscreen();
-    } else if (this.vid.get(0).msRequestFullscreen) {
-      /* IE/Edge */
-      this.vid.get(0).msRequestFullscreen();
+    if (this.OS === "iOS") {
+      this.vid.get(0).webkitEnterFullscreen();
+    } else {
+      if (this.vid.get(0).requestFullscreen) {
+        this.vid.get(0).requestFullscreen();
+      } else if (this.vid.get(0).mozRequestFullScreen) {
+        /* Firefox */
+        this.vid.get(0).mozRequestFullScreen();
+      } else if (this.vid.get(0).webkitRequestFullscreen) {
+        /* Chrome, Safari and Opera */
+        this.vid.get(0).webkitRequestFullscreen();
+      } else if (this.vid.get(0).msRequestFullscreen) {
+        /* IE/Edge */
+        this.vid.get(0).msRequestFullscreen();
+      }
     }
+
     let menuBar = $("#videoNav-" + this.props.video.video_num);
     let controllBar = $("#videoContorl-" + this.props.video.video_num);
     menuBar.fadeOut();
@@ -171,33 +172,34 @@ class Video extends PureComponent {
       this.vid.get(0).play();
       this.setState({
         isPlaying: true,
-        beginPlaying: true
+        beginPlaying: true,
+        firstTime: false
       });
       if (this.props.playId !== this.props.video.id) {
         this.setVideoPlayIdToMe();
       }
       this.menuFadeOut();
     } else if (this.vid.get(0).paused && this.state.videoEnd) {
-      if (this.OS === "iOS") {
-        this.playiOSVideo();
-        if (this.props.playId !== this.props.video.id) {
-          this.props.setVideoPlayIdToMe();
-        }
-      } else {
-        this.vid.get(0).pause();
-        let source = document.getElementById(
-          "videoSource-" + this.props.video.video_num
-        );
-        source.setAttribute("src", this.props.video.video_url);
-        this.vid.get(0).load();
-        this.vid.get(0).play();
-        this.setState({
-          isPlaying: true
-        });
-        if (this.props.playId !== this.props.video.id) {
-          this.setVideoPlayIdToMe();
-        }
+      //   if (this.OS === "iOS") {
+      //     this.playiOSVideo();
+      //     if (this.props.playId !== this.props.video.id) {
+      //       this.props.setVideoPlayIdToMe();
+      //     }
+      //   } else {
+      this.vid.get(0).pause();
+      let source = document.getElementById(
+        "videoSource-" + this.props.video.video_num
+      );
+      source.setAttribute("src", this.props.video.video_url);
+      this.vid.get(0).load();
+      this.vid.get(0).play();
+      this.setState({
+        isPlaying: true
+      });
+      if (this.props.playId !== this.props.video.id) {
+        this.setVideoPlayIdToMe();
       }
+      //  }
       this.menuFadeOut();
     }
     this.setState({
@@ -205,7 +207,7 @@ class Video extends PureComponent {
     });
   };
 
-  playiOSVideo = () => {
+  /* playiOSVideo = () => {
     //console.log("play ios video");
     if (this.OS !== "iOS" || this.state.beginPlaying) {
       return;
@@ -219,12 +221,12 @@ class Video extends PureComponent {
     );
     source.setAttribute("src", this.props.video_url);
     this.vid.get(0).load();
-    this.vid.get(0).play();
+    // this.vid.get(0).play();
     //}
     this.setState({
       beginPlaying: true
     });
-  };
+  };*/
   //视频结束
   videoEnd = () => {
     if (this.mounted) {
@@ -251,7 +253,7 @@ class Video extends PureComponent {
     if (position > progressBarWidth) {
       position = progressBarWidth;
     }
-    let percentage = 100 * position / progressBarWidth;
+    let percentage = (100 * position) / progressBarWidth;
 
     if (percentage > 100) {
       percentage = 100;
@@ -260,7 +262,7 @@ class Video extends PureComponent {
       percentage = 0;
     }
     videoProges.width(parseInt(position, 10));
-    let current = parseInt(percentage * duration / 100, 10);
+    let current = parseInt((percentage * duration) / 100, 10);
     let currentTime = this.numberToTime(current);
     if (this.mounted) {
       this.setState({
@@ -314,14 +316,13 @@ class Video extends PureComponent {
 
     //如果视频加载完成，移除等待画面
     this.vid.on("canplay", () => {
-      console.log("video can play");
-      if (this.state.lastPlayPosition > 0) {
+      /*  if (this.state.lastPlayPosition > 0) {
         video.get(0).currentTime = this.state.lastPlayPosition;
-      }
+      }*/
       if (this.mounted) {
         this.setState({
-          videoReady: true,
-          lastPlayPosition: 0
+          videoReady: true
+          //  lastPlayPosition: 0
         });
       }
     });
@@ -331,8 +332,8 @@ class Video extends PureComponent {
       this.setDuration();
       if (this.OS === "iOS" && this.mounted) {
         this.setState({
-          videoReady: true,
-          lastPlayPosition: 0
+          videoReady: true
+          // lastPlayPosition: 0
         });
       }
     });
@@ -358,9 +359,7 @@ class Video extends PureComponent {
     this.vid.on("mozfullscreenchange", this.checkVideoStatus);
     this.vid.on("webkitfullscreenchange", this.checkVideoStatus);
     this.vid.on("msfullscreenchange", this.checkVideoStatus);
-
-    let playBtn = $("#playBtn-" + this.props.video.video_num);
-    playBtn.fadeIn();
+    this.vid.on("webkitendfullscreen", this.checkVideoStatus);
   }
   componentWillReceiveProps(nextProps) {
     if (
@@ -369,17 +368,15 @@ class Video extends PureComponent {
       nextProps.playId !== -1
     ) {
       this.videoChange = true;
-      //if (this.state.isPlaying) {
       this.pauseVideo();
-      //}
-      /*let menuBar = $("#videoNav-" + this.props.video.video_num);
-      let controllBar = $("#videoContorl-" + this.props.video.video_num);
-      menuBar.fadeOut();
-      controllBar.fadeOut();*/
     }
   }
 
   componentDidUpdate() {
+    if (this.state.videoReady && this.state.firstTime) {
+      let playBtn = $("#playBtn-" + this.props.video.video_num);
+      playBtn.fadeIn();
+    }
     let timeDrag = this.state.timeDrag;
 
     //拖曳进度条
@@ -476,7 +473,7 @@ class Video extends PureComponent {
       //设置当前播放时间和总时长
       if (this.state.duration !== 0) {
         let totalWidth = window.innerWidth * 0.8;
-        let progress = this.state.current / this.state.duration * totalWidth;
+        let progress = (this.state.current / this.state.duration) * totalWidth;
         $("#videoProgress-" + this.props.video.video_num).width(progress);
       }
       //设置菜单栏和控制栏的位置
@@ -487,7 +484,7 @@ class Video extends PureComponent {
       menuBarXPosition = 0;
       controlBarXPosition = 0;
 
-      let videoBottom = window.innerWidth * 9 / 16;
+      let videoBottom = (window.innerWidth * 9) / 16;
 
       controlBarYPosition = videoBottom - 50;
 
@@ -507,9 +504,7 @@ class Video extends PureComponent {
             marginLeft: menuBarXPosition
           }}
         >
-          <span style={{ width: barWidth }}>
-            {" "}{this.props.video.title}
-          </span>
+          <span style={{ width: barWidth }}> {this.props.video.title}</span>
         </div>
       );
       if (!this.state.videoReady) {
@@ -521,7 +516,7 @@ class Video extends PureComponent {
         if (this.state.isLandScape) {
           loadingHeight = "100vh";
         } else {
-          loadingHeight = window.innerWidth * 9 / 16;
+          loadingHeight = (window.innerWidth * 9) / 16;
         }
         let loadingWidth = Window.innerWidth;
         let marginTop = 0;
@@ -535,7 +530,6 @@ class Video extends PureComponent {
               height: loadingHeight,
               marginTop: marginTop
             }}
-            onClick={this.playiOSVideo}
           >
             <img src={imgSource} alt="loading" />
           </div>
@@ -569,12 +563,8 @@ class Video extends PureComponent {
               </div>
             </div>
             <div className="display-current-video-time">
-              <div className="video-start-time">
-                {this.state.currentTime}
-              </div>
-              <div className="video-end-time">
-                {this.state.endTime}
-              </div>
+              <div className="video-start-time">{this.state.currentTime}</div>
+              <div className="video-end-time">{this.state.endTime}</div>
             </div>
           </div>
           <div className="video-screen-control-btn" onClick={this.switchScreen}>
